@@ -1,0 +1,14 @@
+generator client { provider="prisma-client-js" }
+datasource db { provider="sqlite" url=env("DATABASE_URL") }
+enum UniverseVisibility { PUBLIC UNLISTED PRIVATE PASSWORD_APPROVAL INVITE_ONLY }
+enum Role { OWNER ADMIN EDITOR VIEWER VISITOR }
+model User { id String @id @default(cuid()); name String?; email String? @unique; passwordHash String?; image String?; createdAt DateTime @default(now()); memberships Membership[]; ownedUniverses Universe[] @relation("Owner"); auditEvents AuditEvent[] }
+model Universe {
+ id String @id @default(cuid()); slug String @unique; title String; description String @default(""); lore String @default(""); coverUrl String?; backgroundUrl String?;
+ visibility UniverseVisibility @default(PUBLIC); passwordHash String?; configJson String @default("{}"); published Boolean @default(true); archived Boolean @default(false);
+ ownerId String; owner User @relation("Owner",fields:[ownerId],references:[id],onDelete:Cascade); memberships Membership[]; scenes Scene[]; versions UniverseVersion[]; audits AuditEvent[]; externalUrl String?; createdAt DateTime @default(now()); updatedAt DateTime @updatedAt
+}
+model Membership { id String @id @default(cuid()); userId String; universeId String; role Role @default(VIEWER); createdAt DateTime @default(now()); user User @relation(fields:[userId],references:[id],onDelete:Cascade); universe Universe @relation(fields:[universeId],references:[id],onDelete:Cascade); @@unique([userId,universeId]) }
+model Scene { id String @id @default(cuid()); universeId String; order Int; eyebrow String @default(""); title String @default(""); body String @default(""); emoji String @default(""); durationMs Int @default(6000); mediaUrl String?; mediaType String?; animation String @default("cinematic"); configJson String @default("{}"); universe Universe @relation(fields:[universeId],references:[id],onDelete:Cascade); @@index([universeId,order]) }
+model UniverseVersion { id String @id @default(cuid()); universeId String; version Int; snapshot String; createdAt DateTime @default(now()); universe Universe @relation(fields:[universeId],references:[id],onDelete:Cascade); @@unique([universeId,version]) }
+model AuditEvent { id String @id @default(cuid()); universeId String?; userId String?; action String; metadata String @default("{}"); createdAt DateTime @default(now()); universe Universe? @relation(fields:[universeId],references:[id],onDelete:Cascade); user User? @relation(fields:[userId],references:[id],onDelete:SetNull) }
